@@ -647,7 +647,7 @@ RENDER.followup = function(){
     {h:'Calls', cls:'num', f:l=>n(l.calls)},
     {h:'Last call', cls:'num', f:l=>fmtDate(l.lastCall)},
     {h:'CRM', f:l=>`<a href="${crmLink('Leads',l.id)}" target="_blank">open ↗</a>`}
-  ], withFu.slice().sort((a,b)=>(a.fuEff<b.fuEff?-1:1)).slice(0,1500));
+  ], withFu.slice().sort((a,b)=>(a.fuEff<b.fuEff?-1:1)));
   if(withFu.length>1500) h += `<div class="note">Showing 1,500 of ${n(withFu.length)} — click any KPI above for a filtered, exportable list.</div>`;
   return h;
 };
@@ -896,7 +896,7 @@ RENDER.detail = function(){
     'All Lead fields + '+FF.callOwn+', '+FF.dur,
     'One row per lead in the filtered set. Per-lead call columns are COUNT(logged Calls on the lead); '+
     '"By current PSM" is COUNT(logged Calls WHERE Calls.Owner = current Lead Owner) — the difference against Total calls '+
-    'is exactly the work done by previous owners.', 'Table capped at 2,000 rows; use Export CSV for the full set');
+    'is exactly the work done by previous owners.', 'First 10 rows shown; View more displays the full list');
   h += `<div style="margin-bottom:10px"><button class="ghost" data-act="${act(()=>drill('Full filtered lead list','leads',L,'All filters applied.'))}">Open full list / export CSV</button>
     <button class="ghost" data-act="${act(()=>drill('Full filtered call list','calls',M.calls,D.calls+' '+D.attrib))}">Open all matched calls / export CSV</button></div>`;
   h += table([
@@ -927,7 +927,7 @@ RENDER.detail = function(){
     {h:'Lead age (d)', cls:'num', f:l=>l.age==null?'—':l.age},
     {h:'Transfer', f:l=>l.transferred?'<span class="badge b-acc">Transferred</span>':'—'},
     {h:'CRM', f:l=>`<a href="${crmLink('Leads',l.id)}" target="_blank">open ↗</a>`}
-  ], L.slice(0,2000));
+  ], L);
   return h;
 };
 
@@ -1416,7 +1416,7 @@ RENDER.board = function(){
 
   const block = (title, rows, kind, fields, formula, filters) => {
     let s = sec(title + ` <span class="badge b-acc">${n(rows.length)}</span>`, fields, formula, filters);
-    s += rows.length ? table(boardCols(kind), rows.slice(0,1000))
+    s += rows.length ? table(boardCols(kind), rows)
                      : '<div class="note">Nothing in this bucket right now.</div>';
     if(rows.length > 1000) s += `<div class="note">Showing 1,000 of ${n(rows.length)}.</div>`;
     return s;
@@ -2010,19 +2010,97 @@ function wireWorkspacePagination(){
     if(input&&event.key==='Enter'){event.preventDefault();workspaceJumpToPage(input);}
   });
 }
-function workspacePlainRows(){
-  const sort=(leads)=>[...leads].sort((a,b)=>workspaceDateOrder(a.fuEff,b.fuEff)||String(a.id).localeCompare(String(b.id)));
+// Workspace periods use calendar boundaries in IST, independent of analytics filters.
+const WORKSPACE_PERIODS=[['today','Today'],['thisweek','This week'],['lastweek','Last week'],['thismonth','This month'],['lastmonth','Last month'],['thisyear','This year'],['all','All time'],['custom','Custom date / time']];
+function workspaceTime(value){
+  if(value==null||value==='') return NaN;
+  if(typeof value==='number') return value;
+  let text=String(value);
+  if(/^\d{4}-\d{2}-\d{2}$/.test(text)) text+='T00:00:00+05:30';
+  else if(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(text)) text+='+05:30';
+  return Date.parse(text);
+}
+function workspaceDateRange(filter=STATE.workspace,now=Date.now()){
+  const today=new Date(now+330*60000).toISOString().slice(0,10),year=+today.slice(0,4),month=+today.slice(5,7);
+  const monthBoundary=(y,m)=>new Date(Date.UTC(y,m,1)).toISOString().slice(0,10);
+  let start,end;
+  switch(filter.period){
+    case 'all': return {start:-Infinity,end:Infinity,label:'All time',valid:true};
+    case 'custom': {
+      start=workspaceTime(filter.from);end=workspaceTime(filter.to)+60000;
+      return {start,end,label:'Custom date / time',valid:Number.isFinite(start)&&Number.isFinite(end)&&start<end};
+    }
+    case 'thisweek': start=startOfWeek(today);end=addDays(start,7);break;
+    case 'lastweek': end=startOfWeek(today);start=addDays(end,-7);break;
+    case 'thismonth': start=monthStart(today);end=monthBoundary(year,month);break;
+    case 'lastmonth': start=monthBoundary(year,month-2);end=monthStart(today);break;
+    case 'thisyear': start=year+'-01-01';end=(year+1)+'-01-01';break;
+    default: start=today;end=addDays(today,1);
+  }
+  return {start:workspaceTime(start),end:workspaceTime(end),label:fmtDate(start)+(addDays(end,-1)!==start?' – '+fmtDate(addDays(end,-1)):''),valid:true};
+}
+function workspaceRecordTime(record){return workspaceTime(record.task?(record.lead.rnrDue||record.lead.dueDate):record.lead.fuEff);}
+function workspaceDateMatches(record,range=workspaceDateRange()){
+  if(!range.valid) return false;
+  if(range.start===-Infinity&&range.end===Infinity) return true;
+  const time=workspaceRecordTime(record);
+  return Number.isFinite(time)&&time>=range.start&&time<range.end;
+}
+function workspacePlainRows(filter=STATE.workspace,now=Date.now()){
+  const sort=leads=>[...leads].sort((a,b)=>workspaceDateOrder(a.fuEff,b.fuEff)||String(a.id).localeCompare(String(b.id)));
   const raw=sort(workspaceRawLeads()).map(lead=>({lead,category:'Raw lead',tone:'raw',task:false}));
   const priority=workspacePriorityLeads();
   const bands=PRI_BANDS.slice(0,3).flatMap((band,i)=>sort(priority.filter(l=>l.fuPriority===band.key)).map(lead=>({lead,category:band.label.toLowerCase().replace(/^./,c=>c.toUpperCase()),tone:['high','medium','low'][i],task:false})));
   const days=workspaceZohoMandateRows(workspaceZohoMandateLeads()).flatMap(day=>day.pending.map(lead=>({lead,category:'Day '+day.day+' mandated',tone:'day',task:true})));
-  return [...raw,...bands,...days];
+  const range=workspaceDateRange(filter,now);
+  return [...raw,...bands,...days].filter(row=>workspaceDateMatches(row,range));
+}
+function workspaceGroups(records){
+  return [{id:'raw',title:'Raw leads',tone:'raw',rows:records.filter(r=>r.tone==='raw')},
+    ...['high','medium','low'].map(tone=>({id:tone,title:tone[0].toUpperCase()+tone.slice(1)+' priority',tone,rows:records.filter(r=>r.tone===tone)})),
+    ...Array.from({length:5},(_,i)=>({id:'day-'+(i+1),title:'Day '+(i+1),tone:'day',rows:records.filter(r=>r.task&&r.lead.rnrDay===i+1)})),
+    {id:'all',title:'All matching records',tone:'all',rows:[...records].sort((a,b)=>workspaceDateOrder(workspaceRecordTime(a),workspaceRecordTime(b)))}];
+}
+function workspaceDisplayDate(record){
+  const time=workspaceRecordTime(record);
+  if(!Number.isFinite(time)) return 'Not set';
+  const date=new Date(time+330*60000).toISOString();
+  const hasTime=record.task?record.lead.dueHasTime:String(record.lead.fuEff).includes('T');
+  return hasTime?fmtDT(date):fmtDate(date);
+}
+function workspaceSection(group){
+  const full=STATE.workspace.expanded.has(group.id),rows=full?group.rows:group.rows.slice(0,10),all=group.id==='all';
+  return `<section id="ws-section-${group.id}" class="ws-period-section ws-section-${group.tone}" aria-labelledby="ws-title-${group.id}"><header class="ws-section-heading"><h2 id="ws-title-${group.id}">${group.title}</h2><span>${n(group.rows.length)} ${group.tone==='day'?'tasks':'records'}</span></header><table class="ws-period-table"><caption class="sr-only">${group.title}, follow-up / Callback due in IST, earliest first</caption><thead><tr>${all?'<th scope="col">Category</th>':''}<th scope="col">Name / owner</th><th scope="col">${group.tone==='day'?'Callback due':'Follow-up'} <small>IST</small></th><th scope="col">Call</th></tr></thead><tbody>${rows.length?rows.map(record=>{
+    const {lead:l,category,task}=record;
+    return `<tr data-record-id="${esc(task?l.taskId:l.id)}" data-category="${esc(category)}">${all?`<td>${esc(category)}</td>`:''}<td><a href="${esc(crmLink(task?'Tasks':'Leads',task?l.taskId:l.id))}" target="_blank" rel="noopener noreferrer">${esc(l.name||l.leadNo||'Unnamed lead')}</a><small>${esc(l.ownerName||uname(l.ownerId)||'Unassigned')}</small></td><td>${workspaceDisplayDate(record)}</td><td>${workspacePhoneLink(l,'ws-call-button')}</td></tr>`;
+  }).join(''):`<tr><td colspan="${all?4:3}" class="ws-period-empty">No matching records. Choose another period or team member.</td></tr>`}</tbody></table><footer class="table-preview-footer"><span>Showing ${n(rows.length)} of ${n(group.rows.length)}</span>${group.rows.length>10?`<button type="button" class="ghost" data-ws-expand="${group.id}" aria-controls="ws-section-${group.id}" aria-expanded="${full}" aria-label="${full?'Show top 10 in':'View more in'} ${group.title}">${full?'Show top 10':'View more'}</button>`:''}</footer></section>`;
+}
+function workspaceChangePeriod(period){
+  STATE.workspace.period=WORKSPACE_PERIODS.some(p=>p[0]===period)?period:'today';
+  STATE.workspace.expanded.clear();
+  if(period==='custom'&&(!STATE.workspace.from||!STATE.workspace.to)){
+    const date=new Date(Date.now()+330*60000).toISOString().slice(0,10);
+    STATE.workspace.from=date+'T00:00';STATE.workspace.to=date+'T23:59';
+  }
+}
+function wireWorkspaceDateFilters(){
+  document.getElementById('view').addEventListener('change',event=>{
+    if(event.target.id==='workspace-period') workspaceChangePeriod(event.target.value);
+    else if(['workspace-from','workspace-to'].includes(event.target.id)){
+      STATE.workspace[event.target.id==='workspace-from'?'from':'to']=event.target.value;
+      STATE.workspace.expanded.clear();
+    }else return;
+    const id=event.target.id;render();document.getElementById(id)?.focus({preventScroll:true});
+  });
+  document.getElementById('view').addEventListener('click',event=>{
+    const button=event.target.closest('[data-ws-expand]');if(!button) return;
+    const id=button.dataset.wsExpand,group=workspaceGroups(workspacePlainRows()).find(g=>g.id===id);if(!group) return;
+    if(STATE.workspace.expanded.has(id)) STATE.workspace.expanded.delete(id);else STATE.workspace.expanded.add(id);
+    document.getElementById('ws-section-'+id).outerHTML=workspaceSection(group);
+    document.querySelector(`[data-ws-expand="${id}"]`)?.focus({preventScroll:true});
+  });
 }
 RENDER.workspace=function(){
-  const records=workspacePlainRows();
-  return `<div class="psm-workspace ws-designed ws-plain-dashboard"><header class="ws-plain-heading"><h1>Calling list</h1><p>${n(records.length)} records · Saved snapshot ${fmtDate(DATA.meta.generatedAt)}</p></header><table class="ws-plain-table"><caption>All matching raw leads, priority leads and mandated call tasks</caption><thead><tr><th scope="col">Category</th><th scope="col">Name</th><th scope="col">Owner</th><th scope="col">Follow-up / Callback due (IST)</th><th scope="col">Call</th></tr></thead><tbody>${records.length?records.map(({lead:l,category,tone,task})=>{
-    const date=task?l.rnrDue:l.fuEff;
-    const display=Number.isFinite(Date.parse(date))?(task&&l.dueHasTime?fmtDT(date):fmtDate(task?l.dueDate:date)):'Not set';
-    return `<tr data-record-id="${esc(task?l.taskId:l.id)}" data-category="${esc(category)}"><td><span class="ws-plain-category ws-category-${tone}">${esc(category)}</span></td><td><a href="${esc(crmLink(task?'Tasks':'Leads',task?l.taskId:l.id))}" target="_blank" rel="noopener noreferrer">${esc(l.name||l.leadNo||'Unnamed lead')}</a></td><td>${esc(l.ownerName||uname(l.ownerId)||'Unassigned')}</td><td>${display}</td><td>${workspacePhoneLink(l,'ws-call-button')}</td></tr>`;
-  }).join(''):'<tr><td colspan="5">No records for the selected team member.</td></tr>'}</tbody></table></div>`;
+  const range=workspaceDateRange(),records=workspacePlainRows(),groups=workspaceGroups(records),filter=STATE.workspace;
+  return `<div class="psm-workspace ws-designed ws-plain-dashboard ws-period-dashboard"><header class="ws-plain-heading"><h1>Calling workspace</h1><p>${n(records.length)} matching records · Saved snapshot ${fmtDate(DATA.meta.generatedAt)}</p></header><section class="ws-period-controls" aria-label="Follow-up date filter"><div><label for="workspace-period">Follow-up date / time</label><select id="workspace-period" aria-describedby="workspace-period-help">${WORKSPACE_PERIODS.map(([value,label])=>`<option value="${value}"${filter.period===value?' selected':''}>${label}</option>`).join('')}</select></div>${filter.period==='custom'?`<div><label for="workspace-from">From (IST)</label><input type="datetime-local" id="workspace-from" value="${esc(filter.from)}"></div><div><label for="workspace-to">Through (IST)</label><input type="datetime-local" id="workspace-to" value="${esc(filter.to)}"></div>`:''}<p id="workspace-period-help">${range.valid?esc(range.label)+' · IST. Weeks run Monday–Sunday.':'Choose a valid start and end time.'}<br>Filters follow-ups and mandated callbacks. ${filter.period==='all'?'Includes records without a date.':'Records without a date are excluded.'}</p></section>${!range.valid?'<p role="alert" class="ws-range-error">Enter both dates, with the end on or after the start.</p>':''}${workspaceSection(groups[0])}<div class="ws-priority-tables">${groups.slice(1,4).map(workspaceSection).join('')}</div><section class="ws-mandated-group" aria-labelledby="ws-mandated-title"><h2 id="ws-mandated-title">Mandated calls</h2><div class="ws-day-tables">${groups.slice(4,9).map(workspaceSection).join('')}</div></section>${workspaceSection(groups[9])}</div>`;
 };

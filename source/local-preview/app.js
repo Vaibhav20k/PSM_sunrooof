@@ -13,6 +13,7 @@ const CC = { id:0, ownerId:1, leadId:2, type:3, result:4, start:5, dur:6, outSta
 
 const DATA = { leads:[], calls:[], users:{}, meta:{}, leadById:new Map() };
 const STATE = {
+  workspace:{period:'today',from:'',to:'',expanded:new Set()},
   page:'workspace',                 // Follow-up Board is the first tab and the landing page
   filters:{ preset:'all', from:null, to:null, psm:[], region:[], city:[], source:[], status:[], team:[],
             disp:[], outcome:[], fu:[], transfer:[], dateScope:'created' }
@@ -482,9 +483,7 @@ function drill(title, kind, rows, def){
   _modalRows = rows; _modalCols = cols;
   document.getElementById('modalTitle').textContent = `${title} — ${n(rows.length)} record${rows.length===1?'':'s'}`;
   document.getElementById('modalDef').innerHTML = def ? `<b>Definition:</b> ${def}` : '';
-  const cap = rows.slice(0, 3000);
-  let h = table(cols.map(c=>({h:c[0], f:c[1], cls:c[2]||''})), cap);
-  if(rows.length > cap.length) h += `<div class="note" style="padding:10px 16px">Showing first ${n(cap.length)} of ${n(rows.length)} — use Export CSV for the full set.</div>`;
+  const h = table(cols.map(c=>({h:c[0], f:c[1], cls:c[2]||''})), rows);
   document.getElementById('modalBody').innerHTML = h;
   document.getElementById('modal').classList.remove('hidden');
 }
@@ -565,18 +564,28 @@ function sec(title, fields, formula, extra){
 function chart(title, body, fields, formula, extra){
   return `<div class="chartbox"><h4>${title}</h4>${body}${fields?fx(fields,formula,extra):''}</div>`;
 }
+let TABLE_SEQUENCE=0;
 function table(cols, rows, opts){
-  opts = opts||{};
-  let h = `<div class="tblwrap"><table><thead><tr>${cols.map(c=>`<th class="${c.cls||''}">${c.h}</th>`).join('')}</tr></thead><tbody>`;
-  for(const r of rows) h += `<tr>${cols.map(c=>{
-      const v = c.f(r);
-      const a = c.act ? ` data-act="${c.act(r)}" class="click ${c.cls||''}"` : ` class="${c.cls||''}"`;
-      return `<td${a}>${v}</td>`;
-    }).join('')}</tr>`;
-  h += '</tbody>';
-  if(opts.foot) h += `<tfoot><tr>${cols.map(c=>`<td class="${c.cls||''}">${opts.foot(c, rows)||''}</td>`).join('')}</tr></tfoot>`;
-  h += '</table></div>';
-  return h;
+  opts=opts||{};
+  const id=opts.id||'data-table-'+(++TABLE_SEQUENCE), visible=opts.expanded?rows:rows.slice(0,10);
+  let h=`<section id="${id}" class="table-preview"><div class="tblwrap"><table><thead><tr>${cols.map(c=>`<th class="${c.cls||''}">${c.h}</th>`).join('')}</tr></thead><tbody>`;
+  for(const r of visible) h+=`<tr>${cols.map(c=>{
+    const a=c.act?` data-act="${c.act(r)}" class="click ${c.cls||''}"`:` class="${c.cls||''}"`;
+    return `<td${a}>${c.f(r)}</td>`;
+  }).join('')}</tr>`;
+  h+='</tbody>';
+  if(opts.foot) h+=`<tfoot><tr>${cols.map(c=>`<td class="${c.cls||''}">${opts.foot(c,rows)||''}</td>`).join('')}</tr></tfoot>`;
+  h+='</table></div>';
+  h+=`<footer class="table-preview-footer"><span>Showing ${n(visible.length)} of ${n(rows.length)}</span>`;
+  if(rows.length>10){
+    const action=act(()=>{
+      const container=document.getElementById(id),header=container.querySelector('thead').outerHTML;
+      container.outerHTML=table(cols,rows,{...opts,id,expanded:!opts.expanded}).replace(/<thead>.*?<\/thead>/s,()=>header);
+      document.querySelector('#'+id+' button[data-act]')?.focus({preventScroll:true});
+    });
+    h+=`<button class="ghost" data-act="${action}" aria-expanded="${!!opts.expanded}">${opts.expanded?'Show top 10':'View more'}</button>`;
+  }
+  return h+'</footer></section>';
 }
 function barCell(v, max, label){
   const w = max? Math.max(1, 100*v/max) : 0;
@@ -721,8 +730,10 @@ function render(){
 
 function wire(){
   wireWorkspacePagination();
+  wireWorkspaceDateFilters();
   document.getElementById('workspace-person').addEventListener('change',event=>{
     const owner=event.target.value;
+    STATE.workspace.expanded.clear();
     for(const option of document.getElementById('fPsm').options) option.selected=!!owner&&option.value===owner;
     readFilters();render();
   });

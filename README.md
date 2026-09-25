@@ -2,7 +2,7 @@
 
 Vanilla HTML, CSS and JavaScript dashboard with a Python local server and an optional Node.js backend.
 
-The calling workspace shows raw leads, high / medium / low priority leads and Day 1â€“5 mandated calls in one plain table. The owner selector is at the top. There are no pagination arrows or internal table scrollbars; the full dataset uses normal page scrolling. Mandated days come from actual open RNR task subjects, preserving separate task IDs.
+The calling workspace has raw, high / medium / low priority, Day 1–5 mandated-call, and combined tables. The owner selector stays at the top. A follow-up filter defaults to Today in IST, with complete calendar weeks, months, this year, all time, and custom date/time ranges. Leads use their follow-up timestamp; tasks use their callback due timestamp. Each table initially shows the earliest 10 matching records; View more reveals its full filtered list and Show top 10 collapses it. Undated records appear only under All time. Mandated days come from actual open RNR task subjects, preserving separate task IDs. Shared analytics tables and drill-downs also preview 10 rows with View more.
 
 ## Run locally
 

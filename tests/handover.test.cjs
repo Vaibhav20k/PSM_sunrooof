@@ -160,7 +160,7 @@ test('scheduled RNR export reconciles task IDs and filters by callback date inst
  assert.deepEqual(Array.from(rows,r=>r.pending.length),[0,945,35,0,0]);
  const ids=Array.from(rows).flatMap(r=>Array.from(r.pending,l=>l.taskId)).sort();
  assert.deepEqual(ids,raw.mandateleads.leads.map(l=>l.taskId).sort());
- const html=vm.runInContext('RENDER.workspace()',c);assert.ok(html.includes('Callback due'));assert.ok(html.includes('/tab/Tasks/'));assert.ok(!html.includes('Day number follows RNR attempt count'));
+ vm.runInContext("workspaceChangePeriod('all')",c);const html=vm.runInContext('RENDER.workspace()',c);assert.ok(html.includes('Callback due'));assert.ok(html.includes('/tab/Tasks/'));assert.ok(!html.includes('Day number follows RNR attempt count'));
  c.owner=raw.mandateleads.leads[0].ownerId;vm.runInContext('STATE.filters.psm=[owner];recompute()',c);
  assert.equal(vm.runInContext('workspaceZohoMandateLeads().length',c),raw.mandateleads.leads.filter(l=>l.ownerId===c.owner).length);
  vm.runInContext("STATE.filters.psm=[];STATE.filters.preset='custom';STATE.filters.from='2026-09-24';STATE.filters.to='2026-09-24';recompute()",c);
