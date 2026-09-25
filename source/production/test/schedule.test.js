@@ -1,0 +1,10 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {due} from '../lib/schedule.js';
+const now=Date.parse('2026-09-18T12:00:00Z');
+const s=(age)=>({manifest:{generatedAt:new Date(now-age*60000).toISOString()},status:{state:'complete'},lease_until:null});
+test('waits 15 minutes, then becomes due',()=>{assert.equal(due(s(14.99),now),false);assert.equal(due(s(15),now),true)});
+test('blocks overlapping refreshes',()=>{assert.equal(due({...s(30),lease_until:new Date(now+60000)},now),false)});
+test('recovers a terminated job after its lease expires',()=>{assert.equal(due({...s(30),status:{state:'running'},lease_until:new Date(now-1)},now),true)});
+test('retries failures after two minutes',()=>{const a={...s(30),status:{state:'error',failedAt:new Date(now-60000).toISOString()}};assert.equal(due(a,now),false);assert.equal(due(a,now+60000),true)});
+test('missing snapshot is due immediately',()=>{assert.equal(due({status:{}},now),true)});

@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SUNROOOF — PSM Calling Head Dashboard</title>
+<link rel="stylesheet" href="styles.css?v=49">
+<script>(function(){try{var t=localStorage.getItem('sunrooof-theme')||'light';document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();</script>
+</head>
+<body>
+<section class="identity-strip" aria-label="Choose your workspace">
+  <label for="workspace-person"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 22v-3a8 8 0 0 1 16 0v3"/></svg>I am</label>
+  <select id="workspace-person" aria-describedby="workspace-person-help"><option value="">Everyone (whole team)</option></select>
+  <span id="workspace-person-help">Pick your name to see only your day</span>
+</section>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">SUNROOOF</span>
+    <span class="sub">PSM workspace</span>
+  </div>
+  <div class="topmeta">
+    <span id="dataStamp" class="stamp">loading…</span>
+    <button id="btnSync" class="ghost" title="Fetch fresh data from Zoho CRM now">⟳ Sync now</button>
+    <button id="btnTheme" class="ghost icon" title="Toggle light / dark theme" aria-label="Toggle theme">🌙</button>
+    <button id="btnFx" class="ghost">Formulas: OFF</button>
+    <button id="btnDefs" class="ghost">Definitions</button>
+  </div>
+</header>
+
+<nav class="tabs" id="tabs"></nav>
+
+<details class="workspace-filters"><summary>Filter your workspace <span>Choose PSM, dates, source and more</span></summary>
+<section class="filterbar" id="filterbar">
+  <div class="fgroup">
+    <label>Date range <small>(applies to calls &amp; activity)</small></label>
+    <div class="frow">
+      <select id="fPreset">
+        <option value="all">All time</option>
+        <option value="today">Today</option>
+        <option value="yesterday">Yesterday</option>
+        <option value="thisweek">This week</option>
+        <option value="lastweek">Last week</option>
+        <option value="thismonth">This month</option>
+        <option value="lastmonth">Last month</option>
+        <option value="thisquarter">This quarter</option>
+        <option value="fy">Financial year (Apr–Mar)</option>
+        <option value="last7">Last 7 days</option>
+        <option value="last30">Last 30 days</option>
+        <option value="last90">Last 90 days</option>
+        <option value="custom">Custom…</option>
+      </select>
+      <input type="date" id="fFrom"><input type="date" id="fTo">
+    </div>
+  </div>
+  <div class="fgroup"><label>PSM / Owner</label><select id="fPsm" multiple size="1"></select></div>
+  <div class="fgroup"><label>Region</label><select id="fRegion" multiple size="1"></select></div>
+  <div class="fgroup"><label>City</label><select id="fCity" multiple size="1"></select></div>
+  <div class="fgroup"><label>Lead Source</label><select id="fSource" multiple size="1"></select></div>
+  <div class="fgroup"><label>Lead Status / Stage</label><select id="fStatus" multiple size="1"></select></div>
+  <div class="fgroup"><label>Team</label><select id="fTeam" multiple size="1"></select></div>
+  <div class="fgroup"><label>Disposition</label><select id="fDisp" multiple size="1"></select></div>
+  <div class="fgroup"><label>Call outcome</label><select id="fOutcome" multiple size="1"></select></div>
+  <div class="fgroup"><label>Follow-up status</label><select id="fFu" multiple size="1"></select></div>
+  <div class="fgroup"><label>Transfer status</label><select id="fTransfer" multiple size="1"></select></div>
+  <div class="fgroup">
+    <label>Date range applies to</label>
+    <select id="fDateScope">
+      <option value="created">Lead created date + calls</option>
+      <option value="activity">Lead call activity + calls</option>
+      <option value="calls">Calls only (leads stay lifetime)</option>
+    </select>
+  </div>
+  <div class="fgroup fgroup-actions">
+    <button id="btnReset" class="ghost">Reset filters</button>
+  </div>
+</section>
+
+</details>
+
+<div id="activeFilters" class="activefilters"></div>
+
+<main id="view" class="view"><div class="loading">Loading CRM extract…</div></main>
+
+<div id="modal" class="modal hidden">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3 id="modalTitle"></h3>
+      <div>
+        <button id="modalCsv" class="ghost">Export CSV</button>
+        <button id="modalClose" class="ghost">Close</button>
+      </div>
+    </div>
+    <div id="modalDef" class="modal-def"></div>
+    <div id="modalBody" class="modal-body"></div>
+  </div>
+</div>
+
+<script src="app.js?v=49"></script>
+<script src="pages.js?v=49"></script>
+<script>boot();</script>
+</body>
+</html>

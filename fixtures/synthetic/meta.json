@@ -1,0 +1,11 @@
+{
+  "source": "SYNTHETIC TEST DATA",
+  "generatedAt": "2026-09-01T10:00:00+05:30",
+  "snapshotId": "synthetic-example",
+  "leadCount": 1,
+  "callCount": 2,
+  "users": {
+    "synthetic-psm": "Example PSM"
+  },
+  "crmBase": "https://example.invalid/crm"
+}

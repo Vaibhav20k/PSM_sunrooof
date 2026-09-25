@@ -1,0 +1,30 @@
+[
+  [
+    "synthetic-call-1",
+    "synthetic-psm",
+    "synthetic-lead",
+    "Outbound",
+    null,
+    "2026-09-01T09:00:00+05:30",
+    0,
+    "Completed",
+    null,
+    null,
+    null,
+    "2026-09-01T09:00:00+05:30"
+  ],
+  [
+    "synthetic-call-2",
+    "synthetic-psm",
+    "synthetic-lead",
+    "Outbound",
+    null,
+    "2026-09-01T09:03:00+05:30",
+    0,
+    "Completed",
+    null,
+    null,
+    null,
+    "2026-09-01T09:03:00+05:30"
+  ]
+]

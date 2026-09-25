@@ -1,0 +1,536 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "SUNROOOF PSM Dashboard API",
+    "version": "2026-09-23",
+    "description": "Source-derived contract; see docs/05 for implementation exceptions and aliases."
+  },
+  "servers": [
+    {
+      "url": "https://sunrooof-psm-dashboard.vercel.app"
+    },
+    {
+      "url": "http://localhost:5198"
+    }
+  ],
+  "paths": {
+    "/data/meta.json": {
+      "get": {
+        "summary": "Active snapshot manifest",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Manifest",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Manifest"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Initial sync pending or snapshot unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/data/{file}": {
+      "get": {
+        "summary": "Signed redirect to saved dataset",
+        "security": [],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "file",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "leads.json",
+                "calls.json",
+                "rawquote.json",
+                "dealstage.json"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "snapshot",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9-]{1,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "307": {
+            "description": "Signed URL, valid 120 seconds",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string",
+                  "format": "uri"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid snapshot",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Filename not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Snapshot unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sync": {
+      "post": {
+        "summary": "Request manual read-only CRM extraction",
+        "description": "Origin if present must match https://Host; absent Origin accepted. 202 may mean existing job/throttle; poll status.",
+        "security": [],
+        "responses": {
+          "202": {
+            "description": "Current job state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Sync service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Scheduled freshness-gated extraction",
+        "security": [
+          {
+            "CronBearer": []
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Current job state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Sync service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sync": {
+      "post": {
+        "summary": "Request manual read-only CRM extraction",
+        "description": "Origin if present must match https://Host; absent Origin accepted. 202 may mean existing job/throttle; poll status.",
+        "security": [],
+        "responses": {
+          "202": {
+            "description": "Current job state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Sync service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Scheduled freshness-gated extraction",
+        "security": [
+          {
+            "CronBearer": []
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Current job state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Sync service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sync/status": {
+      "get": {
+        "summary": "Sync status with possible recovery side effect",
+        "description": "May start overdue CRM extraction; not a pure read-only healthcheck.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Job and scheduling state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Status unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/status": {
+      "get": {
+        "summary": "Sync status with possible recovery side effect",
+        "description": "May start overdue CRM extraction; not a pure read-only healthcheck.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Job and scheduling state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Status unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bootstrap": {
+      "post": {
+        "summary": "Initialize and seed only when no manifest exists",
+        "security": [
+          {
+            "BootstrapBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ready",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ready": {
+                      "type": "boolean"
+                    },
+                    "generatedAt": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Wrong method or token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Storage initialization failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/data": {
+      "get": {
+        "summary": "Data alias; file selects manifest or redirect",
+        "security": [],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "file",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "meta.json",
+                "leads.json",
+                "calls.json",
+                "rawquote.json",
+                "dealstage.json"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "snapshot",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Manifest",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Manifest"
+                }
+              }
+            }
+          },
+          "307": {
+            "description": "Signed dataset redirect"
+          },
+          "400": {
+            "description": "Invalid snapshot",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "CronBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "CRON_SECRET; server-only"
+      },
+      "BootstrapBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "PSM_DEPLOY_TOKEN; server-only"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        }
+      },
+      "LeadRow": {
+        "type": "array",
+        "minItems": 41,
+        "maxItems": 41,
+        "description": "Positional CRM fields: docs/04 and LC map"
+      },
+      "CallRow": {
+        "type": "array",
+        "minItems": 12,
+        "maxItems": 12,
+        "description": "Positional Calls fields: docs/04 and CC map"
+      },
+      "Manifest": {
+        "type": "object",
+        "properties": {
+          "snapshotId": {
+            "type": "string"
+          },
+          "generatedAt": {
+            "type": "string"
+          },
+          "leadCount": {
+            "type": "integer"
+          },
+          "callCount": {
+            "type": "integer"
+          },
+          "users": {
+            "type": "object"
+          }
+        }
+      },
+      "Status": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "lastSuccess": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "automaticSync": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

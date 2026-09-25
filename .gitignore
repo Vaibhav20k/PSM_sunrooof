@@ -1,0 +1,22 @@
+# Private CRM snapshots, imports, and historical exports
+/data/
+/source/production/lib/seed/
+/history/
+/reference/
+/provenance/
+/verification/
+*.zip
+*.csv
+*.xlsx
+*.log
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+__pycache__/
+*.py[cod]
+node_modules/
+.vercel/
+.DS_Store
+Thumbs.db

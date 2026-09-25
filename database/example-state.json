@@ -1,0 +1,19 @@
+{
+  "id": 1,
+  "manifest": {
+    "generatedAt": "2026-09-01T10:00:00+05:30",
+    "snapshotId": "synthetic-example",
+    "leadCount": 1,
+    "callCount": 2,
+    "users": {
+      "synthetic-psm": "Example PSM"
+    }
+  },
+  "status": {
+    "state": "complete",
+    "message": "Synthetic example only",
+    "lastSuccess": "2026-09-01T10:00:00+05:30"
+  },
+  "lease_until": null,
+  "last_started": null
+}
