@@ -20,3 +20,6 @@ node_modules/
 .vercel/
 .DS_Store
 Thumbs.db
+
+# Generated Vercel snapshot deployment (contains private data)
+/.vercel-snapshot/

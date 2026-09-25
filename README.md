@@ -2,7 +2,7 @@
 
 Vanilla HTML, CSS and JavaScript dashboard with a Python local server and an optional Node.js backend.
 
-The calling workspace shows raw leads, high / medium / low priority leads and Day 1–5 mandated calls in one plain table. The owner selector is at the top. There are no pagination arrows or internal table scrollbars; the full dataset uses normal page scrolling. Mandated days come from actual open RNR task subjects, preserving separate task IDs.
+The calling workspace shows raw leads, high / medium / low priority leads and Day 1â€“5 mandated calls in one plain table. The owner selector is at the top. There are no pagination arrows or internal table scrollbars; the full dataset uses normal page scrolling. Mandated days come from actual open RNR task subjects, preserving separate task IDs.
 
 ## Run locally
 
@@ -46,3 +46,11 @@ python tools/test_offline.py
 The handover tests and audit/import tools can also reference private exports or historical package manifests, which are intentionally distributed separately. `tools/validate_package.py` validates the original handover archive, not this source-only repository.
 
 Server credentials must be configured separately using `.env.example`; never commit populated values. Pushing this repository does not deploy the app or enable CRM synchronization.
+
+## Deploy the saved dashboard to Vercel
+
+`python tools/prepare_vercel.py` creates a Build Output API artifact under `.vercel-snapshot/.vercel/output/`, using the authorized local `data/snapshot/`. It preserves all three exported calling lists and disables live synchronization. Generated files contain private CRM data and are ignored by Git.
+
+Before uploading, create a separate Vercel project and enable **Vercel Authentication → All Deployments**, including its production domain. Link `.vercel-snapshot/` to that protected project, then run `vercel deploy --prebuilt --prod` from that directory. Verify unauthenticated requests to both the page and `/data/leads.json` require sign-in. Do not publish this artifact to an unprotected project.
+
+The historical backend configuration in `source/production/` is a separate live integration and is not used for this saved-snapshot deployment. Updating GitHub alone does not upload a new private snapshot; regenerate and deploy it separately.
